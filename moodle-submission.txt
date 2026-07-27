@@ -1,0 +1,18 @@
+Software Development Skills: Front-End 2025-26
+Anytime course submission
+
+Student: Diego Jalal
+
+Public git repository:
+https://github.com/fizzytri/software-development-skills-frontend
+
+Deployed sites (GitHub Pages):
+  Project (StudyLog):  https://fizzytri.github.io/software-development-skills-frontend/Project/
+  Coursework site:     https://fizzytri.github.io/software-development-skills-frontend/Coursework/
+
+Repository contents:
+  Coursework/        exercise materials from the tutorial series
+  Project/           course project (StudyLog learning tracker)
+  LearningDiary.md   learning diary
+  README.md          how to run the project
+  VIDEO.md           link to a video of the project running
