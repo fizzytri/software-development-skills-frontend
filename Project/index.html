@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="StudyLog - a simple learning tracker. Log study sessions, set weekly goals and see what you actually spent your time on." />
+  <title>StudyLog | Track What You Learn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap nav-bar">
+      <a href="#top" class="brand">
+        <img src="images/logo.svg" alt="" width="30" height="30" />
+        <span>Study<em>Log</em></span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav">
+        <span class="bars"></span>
+      </button>
+
+      <nav class="site-nav" id="siteNav">
+        <a href="#dashboard" class="nav-link">Dashboard</a>
+        <a href="#log" class="nav-link">Log</a>
+        <a href="#goals" class="nav-link">Goals</a>
+        <a href="#about" class="nav-link">About</a>
+        <button class="btn btn-ghost btn-sm" id="themeToggle" aria-label="Switch colour theme">Dark</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="intro" id="top">
+      <div class="wrap intro-grid">
+        <div>
+          <p class="eyebrow">A learning tracker that fits on one page</p>
+          <h1>Write down what you studied.<br />Watch the weeks add up.</h1>
+          <p class="lede">
+            StudyLog is a small tool I built while learning front-end development. Log a session,
+            tag it with a subject, set a weekly hour goal, and the page works out your totals,
+            your streak and where your time actually went. Everything is stored in your own browser.
+          </p>
+          <div class="btn-row">
+            <a href="#log" class="btn btn-solid">Log a session</a>
+            <a href="#about" class="btn btn-ghost">How it works</a>
+          </div>
+        </div>
+
+        <figure class="intro-card">
+          <img src="images/illustration.svg" alt="Illustration of a notebook with study hours charted on it" />
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="dashboard">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>This week at a glance</h2>
+          <p class="lede">Figures update the moment you add or remove a session.</p>
+        </div>
+
+        <div class="stat-row">
+          <article class="stat">
+            <span class="stat-value" id="statWeek">0h</span>
+            <span class="stat-label">Studied this week</span>
+          </article>
+          <article class="stat">
+            <span class="stat-value" id="statSessions">0</span>
+            <span class="stat-label">Sessions logged</span>
+          </article>
+          <article class="stat">
+            <span class="stat-value" id="statStreak">0</span>
+            <span class="stat-label">Day streak</span>
+          </article>
+          <article class="stat">
+            <span class="stat-value" id="statTop">&mdash;</span>
+            <span class="stat-label">Most studied subject</span>
+          </article>
+        </div>
+
+        <div class="chart-card">
+          <h3>Hours per day</h3>
+          <ul class="chart" id="chart"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-tint" id="log">
+      <div class="wrap log-grid">
+        <div class="panel form-panel">
+          <h2>Add a session</h2>
+          <form id="entryForm" class="entry-form" novalidate>
+            <div class="field">
+              <label for="subject">Subject</label>
+              <input type="text" id="subject" name="subject" list="subjectSuggestions" placeholder="HTML &amp; CSS" required />
+              <datalist id="subjectSuggestions">
+                <option value="HTML &amp; CSS"></option>
+                <option value="JavaScript"></option>
+                <option value="Git"></option>
+                <option value="Mathematics"></option>
+                <option value="Reading"></option>
+              </datalist>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required />
+              </div>
+              <div class="field">
+                <label for="hours">Hours</label>
+                <input type="number" id="hours" name="hours" min="0.25" max="24" step="0.25" placeholder="1.5" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="notes">What did you do? <span class="optional">optional</span></label>
+              <textarea id="notes" name="notes" rows="3" placeholder="Finished the CSS Grid section and rebuilt the card layout from scratch."></textarea>
+            </div>
+
+            <p class="form-error" id="formError" role="alert" hidden></p>
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn-solid">Save session</button>
+              <button type="button" class="btn btn-ghost" id="demoBtn">Load sample data</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel list-panel">
+          <div class="list-head">
+            <h2>Your log</h2>
+            <div class="filters">
+              <label class="sr-only" for="filterSubject">Filter by subject</label>
+              <select id="filterSubject">
+                <option value="all">All subjects</option>
+              </select>
+              <label class="sr-only" for="sortBy">Sort</label>
+              <select id="sortBy">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="longest">Longest first</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="empty" id="emptyState">Nothing logged yet. Add your first session on the left, or load the sample data to see how it looks.</p>
+
+          <ul class="entries" id="entries"></ul>
+
+          <div class="list-foot">
+            <p class="total" id="totalLine"></p>
+            <button type="button" class="btn btn-danger btn-sm" id="clearBtn" hidden>Clear all</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="goals">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Weekly goals</h2>
+          <p class="lede">Set an hour target per subject. Progress fills as you log sessions this week.</p>
+        </div>
+
+        <form class="goal-form" id="goalForm">
+          <div class="field">
+            <label class="sr-only" for="goalSubject">Goal subject</label>
+            <input type="text" id="goalSubject" placeholder="Subject" required />
+          </div>
+          <div class="field">
+            <label class="sr-only" for="goalHours">Weekly hours</label>
+            <input type="number" id="goalHours" min="0.5" max="80" step="0.5" placeholder="Hours / week" required />
+          </div>
+          <button type="submit" class="btn btn-solid">Add goal</button>
+        </form>
+
+        <ul class="goal-list" id="goalList"></ul>
+        <p class="empty" id="goalEmpty">No goals set yet. Try &ldquo;JavaScript&rdquo; at 5 hours a week.</p>
+      </div>
+    </section>
+
+    <section class="band band-tint" id="about">
+      <div class="wrap wrap-narrow">
+        <div class="section-head">
+          <h2>About this project</h2>
+        </div>
+
+        <div class="about-grid">
+          <article class="mini-card">
+            <h3>Why I built it</h3>
+            <p>I kept losing track of how much time I was actually putting into studying. A notebook worked until I wanted totals, so this became my front-end module project.</p>
+          </article>
+          <article class="mini-card">
+            <h3>What it uses</h3>
+            <p>Plain HTML, CSS and JavaScript. No frameworks and no build step. Layout is CSS Grid for the page structure and Flexbox for the smaller pieces.</p>
+          </article>
+          <article class="mini-card">
+            <h3>Where the data lives</h3>
+            <p>In your browser&rsquo;s localStorage. Nothing is uploaded anywhere, so clearing your browser data clears the log too.</p>
+          </article>
+        </div>
+
+        <div class="faq">
+          <details>
+            <summary>Does my data sync between devices?</summary>
+            <p>No. Everything stays in the browser you used. Adding accounts and a server would be a back-end job, which is a different module.</p>
+          </details>
+          <details>
+            <summary>How is the streak counted?</summary>
+            <p>Consecutive days with at least one logged session, counting back from today. Miss a day and it resets to zero.</p>
+          </details>
+          <details>
+            <summary>Which week does the dashboard use?</summary>
+            <p>The current Monday-to-Sunday week, based on your computer&rsquo;s date.</p>
+          </details>
+          <details>
+            <summary>Can I use this myself?</summary>
+            <p>Yes. Clone the repository, open the folder and start logging. There is nothing to install.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div>
+        <a href="#top" class="brand brand-footer">
+          <img src="images/logo.svg" alt="" width="26" height="26" />
+          <span>Study<em>Log</em></span>
+        </a>
+        <p>Built for the LUT Software Development Skills: Front-End module.</p>
+      </div>
+      <nav aria-label="Footer">
+        <h4>Pages</h4>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#log">Log</a>
+        <a href="#goals">Goals</a>
+        <a href="#about">About</a>
+      </nav>
+      <div>
+        <h4>Built with</h4>
+        <p>HTML5, CSS Grid, Flexbox, vanilla JavaScript, localStorage.</p>
+      </div>
+    </div>
+    <div class="wrap footer-bottom">
+      <p>&copy; 2026 StudyLog</p>
+      <p><a href="#top">Back to top</a></p>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
