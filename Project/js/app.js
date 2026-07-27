@@ -1,468 +1,394 @@
-const STORAGE_ENTRIES = "studylog.entries";
-const STORAGE_GOALS = "studylog.goals";
-const STORAGE_THEME = "studylog.theme";
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-let entries = load(STORAGE_ENTRIES, []);
-let goals = load(STORAGE_GOALS, []);
+let entries = [];
+let goals = [];
 
 const form = document.getElementById("entryForm");
-const subjectInput = document.getElementById("subject");
-const dateInput = document.getElementById("date");
-const hoursInput = document.getElementById("hours");
-const notesInput = document.getElementById("notes");
-const formError = document.getElementById("formError");
-const entriesList = document.getElementById("entries");
-const emptyState = document.getElementById("emptyState");
-const totalLine = document.getElementById("totalLine");
-const clearBtn = document.getElementById("clearBtn");
-const demoBtn = document.getElementById("demoBtn");
-const filterSubject = document.getElementById("filterSubject");
-const sortBy = document.getElementById("sortBy");
-const chart = document.getElementById("chart");
 const goalForm = document.getElementById("goalForm");
-const goalSubject = document.getElementById("goalSubject");
-const goalHours = document.getElementById("goalHours");
-const goalList = document.getElementById("goalList");
-const goalEmpty = document.getElementById("goalEmpty");
-const navToggle = document.getElementById("navToggle");
-const siteNav = document.getElementById("siteNav");
-const themeToggle = document.getElementById("themeToggle");
+const filter = document.getElementById("filter");
+const errorText = document.getElementById("error");
 
-function load(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (err) {
-    console.warn("Could not read " + key, err);
-    return fallback;
+function getToday() {
+  const d = new Date();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  return d.getFullYear() + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+}
+
+function dateToText(dateString) {
+  const d = new Date(dateString);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return d.getDate() + " " + months[d.getMonth()] + " " + d.getFullYear();
+}
+
+function last7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    days.push(d.getFullYear() + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0"));
+  }
+  return days;
+}
+
+function loadData() {
+  const savedEntries = localStorage.getItem("studylog-entries");
+  if (savedEntries) {
+    entries = JSON.parse(savedEntries);
+  }
+  const savedGoals = localStorage.getItem("studylog-goals");
+  if (savedGoals) {
+    goals = JSON.parse(savedGoals);
   }
 }
 
-function save(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (err) {
-    console.warn("Could not save " + key, err);
+function saveData() {
+  localStorage.setItem("studylog-entries", JSON.stringify(entries));
+  localStorage.setItem("studylog-goals", JSON.stringify(goals));
+}
+
+function hoursInLast7Days(subject) {
+  const days = last7Days();
+  let total = 0;
+  for (let i = 0; i < entries.length; i++) {
+    if (days.indexOf(entries[i].date) !== -1) {
+      if (!subject || entries[i].subject.toLowerCase() === subject.toLowerCase()) {
+        total = total + entries[i].hours;
+      }
+    }
   }
+  return total;
 }
 
-function toISO(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return year + "-" + month + "-" + day;
-}
-
-function startOfWeek(date) {
-  const d = new Date(date);
-  const day = (d.getDay() + 6) % 7;
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - day);
-  return d;
-}
-
-function weekDates() {
-  const monday = startOfWeek(new Date());
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return toISO(d);
+function showStats() {
+  const days = last7Days();
+  const weekEntries = entries.filter(function (e) {
+    return days.indexOf(e.date) !== -1;
   });
-}
 
-function formatHours(value) {
-  const rounded = Math.round(value * 100) / 100;
-  return Number.isInteger(rounded) ? rounded + "h" : rounded.toFixed(2).replace(/0$/, "") + "h";
-}
+  document.getElementById("totalHours").textContent = hoursInLast7Days() + " h";
+  document.getElementById("totalSessions").textContent = weekEntries.length;
+  document.getElementById("streak").textContent = getStreak();
 
-function formatDate(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
-
-function showError(message) {
-  formError.textContent = message;
-  formError.hidden = false;
-}
-
-function hideError() {
-  formError.hidden = true;
-}
-
-function entriesThisWeek() {
-  const week = weekDates();
-  return entries.filter((e) => week.includes(e.date));
-}
-
-function calcStreak() {
-  const logged = new Set(entries.map((e) => e.date));
-  if (logged.size === 0) return 0;
-
-  const cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
-
-  if (!logged.has(toISO(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-    if (!logged.has(toISO(cursor))) return 0;
+  const subjects = {};
+  for (let i = 0; i < entries.length; i++) {
+    const name = entries[i].subject;
+    if (!subjects[name]) {
+      subjects[name] = 0;
+    }
+    subjects[name] = subjects[name] + entries[i].hours;
   }
 
+  let best = "-";
+  let bestHours = 0;
+  for (const name in subjects) {
+    if (subjects[name] > bestHours) {
+      best = name;
+      bestHours = subjects[name];
+    }
+  }
+  document.getElementById("topSubject").textContent = best;
+}
+
+function getStreak() {
   let streak = 0;
-  while (logged.has(toISO(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+  const d = new Date();
+
+  for (let i = 0; i < 365; i++) {
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const dateString = d.getFullYear() + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+
+    const found = entries.some(function (e) {
+      return e.date === dateString;
+    });
+
+    if (found) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    } else if (streak === 0 && i === 0) {
+      d.setDate(d.getDate() - 1);
+      continue;
+    }
+    d.setDate(d.getDate() - 1);
   }
   return streak;
 }
 
-function topSubject() {
-  if (entries.length === 0) return null;
-  const totals = {};
-  entries.forEach((e) => {
-    totals[e.subject] = (totals[e.subject] || 0) + e.hours;
+function showChart() {
+  const days = last7Days();
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  let biggest = 1;
+  const totals = [];
+
+  for (let i = 0; i < days.length; i++) {
+    let total = 0;
+    for (let j = 0; j < entries.length; j++) {
+      if (entries[j].date === days[i]) {
+        total = total + entries[j].hours;
+      }
+    }
+    totals.push(total);
+    if (total > biggest) {
+      biggest = total;
+    }
+  }
+
+  let html = "";
+  for (let i = 0; i < days.length; i++) {
+    const height = (totals[i] / biggest) * 100;
+    const name = dayNames[new Date(days[i]).getDay()];
+    const barClass = totals[i] > 0 ? "bar" : "bar bar-empty";
+    const label = totals[i] > 0 ? '<p class="bar-value">' + totals[i] + "h</p>" : "";
+
+    html += '<div class="day">' + label +
+      '<div class="' + barClass + '" style="height: ' + height + '%"></div>' +
+      '<p class="day-name">' + name + "</p></div>";
+  }
+  document.getElementById("chart").innerHTML = html;
+}
+
+function showFilterOptions() {
+  const subjects = [];
+  for (let i = 0; i < entries.length; i++) {
+    if (subjects.indexOf(entries[i].subject) === -1) {
+      subjects.push(entries[i].subject);
+    }
+  }
+
+  const chosen = filter.value;
+  let html = '<option value="all">All subjects</option>';
+  for (let i = 0; i < subjects.length; i++) {
+    html += '<option value="' + subjects[i] + '">' + subjects[i] + "</option>";
+  }
+  filter.innerHTML = html;
+
+  if (subjects.indexOf(chosen) !== -1) {
+    filter.value = chosen;
+  }
+}
+
+function showEntries() {
+  let list = entries.slice();
+
+  if (filter.value !== "all") {
+    list = list.filter(function (e) {
+      return e.subject === filter.value;
+    });
+  }
+
+  list.sort(function (a, b) {
+    if (a.date < b.date) return 1;
+    if (a.date > b.date) return -1;
+    return b.id - a.id;
   });
-  return Object.keys(totals).sort((a, b) => totals[b] - totals[a])[0];
-}
 
-function renderStats() {
-  const week = entriesThisWeek();
-  const weekHours = week.reduce((sum, e) => sum + e.hours, 0);
-  const best = topSubject();
+  if (list.length === 0) {
+    let message = "Nothing saved yet. Add a session on the left.";
+    if (entries.length > 0) {
+      message = "No sessions for that subject.";
+    }
+    document.getElementById("entries").innerHTML = '<p class="empty-text">' + message + "</p>";
+    document.getElementById("totalText").textContent = "";
+    document.getElementById("clearBtn").style.display = entries.length > 0 ? "inline-block" : "none";
+    return;
+  }
 
-  document.getElementById("statWeek").textContent = formatHours(weekHours);
-  document.getElementById("statSessions").textContent = String(entries.length);
-  document.getElementById("statStreak").textContent = String(calcStreak());
-  document.getElementById("statTop").textContent = best || "—";
-}
+  let html = "";
+  let total = 0;
 
-function renderChart() {
-  const week = weekDates();
-  const today = toISO(new Date());
-  const totals = week.map((iso) =>
-    entries.filter((e) => e.date === iso).reduce((sum, e) => sum + e.hours, 0)
-  );
-  const max = Math.max(...totals, 1);
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    total = total + e.hours;
 
-  chart.innerHTML = "";
-  week.forEach((iso, i) => {
-    const value = totals[i];
-    const li = document.createElement("li");
-    if (iso === today) li.classList.add("today");
-
-    const bar = document.createElement("div");
-    bar.className = "bar" + (value > 0 ? " has-value" : "");
-    bar.style.height = Math.max((value / max) * 100, 3) + "%";
-    bar.title = DAY_NAMES[i] + ": " + formatHours(value);
-
-    if (value > 0) {
-      const label = document.createElement("span");
-      label.textContent = formatHours(value);
-      bar.appendChild(label);
+    let notes = "";
+    if (e.notes) {
+      notes = '<p class="entry-notes">' + e.notes + "</p>";
     }
 
-    const day = document.createElement("span");
-    day.className = "day";
-    day.textContent = DAY_NAMES[i];
-
-    li.append(bar, day);
-    chart.appendChild(li);
-  });
-}
-
-function renderFilterOptions() {
-  const current = filterSubject.value;
-  const subjects = [...new Set(entries.map((e) => e.subject))].sort();
-  filterSubject.innerHTML = '<option value="all">All subjects</option>';
-  subjects.forEach((s) => {
-    const option = document.createElement("option");
-    option.value = s;
-    option.textContent = s;
-    filterSubject.appendChild(option);
-  });
-  filterSubject.value = subjects.includes(current) ? current : "all";
-}
-
-function visibleEntries() {
-  let list = [...entries];
-  if (filterSubject.value !== "all") {
-    list = list.filter((e) => e.subject === filterSubject.value);
-  }
-  if (sortBy.value === "longest") {
-    list.sort((a, b) => b.hours - a.hours);
-  } else if (sortBy.value === "oldest") {
-    list.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
-  } else {
-    list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-  }
-  return list;
-}
-
-function renderEntries() {
-  const list = visibleEntries();
-  entriesList.innerHTML = "";
-
-  emptyState.hidden = entries.length > 0;
-  clearBtn.hidden = entries.length === 0;
-
-  if (entries.length > 0 && list.length === 0) {
-    emptyState.hidden = false;
-    emptyState.textContent = "No sessions match that filter.";
-  } else if (entries.length > 0) {
-    emptyState.textContent = "";
+    html += '<div class="entry">' +
+      '<p class="entry-hours">' + e.hours + "h</p>" +
+      '<div class="entry-text">' +
+      '<p class="entry-subject">' + e.subject + "</p>" +
+      '<p class="entry-date">' + dateToText(e.date) + "</p>" +
+      notes +
+      "</div>" +
+      '<button class="delete-btn" onclick="deleteEntry(' + e.id + ')">x</button>' +
+      "</div>";
   }
 
-  list.forEach((entry) => {
-    const li = document.createElement("li");
-    li.className = "entry";
+  document.getElementById("entries").innerHTML = html;
+  document.getElementById("totalText").textContent = list.length + " sessions, " + total + " hours";
+  document.getElementById("clearBtn").style.display = "inline-block";
+}
 
-    const hours = document.createElement("span");
-    hours.className = "entry-hours";
-    hours.textContent = formatHours(entry.hours);
+function showGoals() {
+  if (goals.length === 0) {
+    document.getElementById("goals-list").innerHTML = '<p class="empty-text">No goals yet. Try JavaScript with 5 hours.</p>';
+    return;
+  }
 
-    const body = document.createElement("div");
-    const subject = document.createElement("p");
-    subject.className = "entry-subject";
-    subject.textContent = entry.subject;
+  let html = "";
+  for (let i = 0; i < goals.length; i++) {
+    const goal = goals[i];
+    const done = hoursInLast7Days(goal.subject);
 
-    const meta = document.createElement("p");
-    meta.className = "entry-meta";
-    meta.textContent = formatDate(entry.date);
-
-    body.append(subject, meta);
-
-    if (entry.notes) {
-      const notes = document.createElement("p");
-      notes.className = "entry-notes";
-      notes.textContent = entry.notes;
-      body.appendChild(notes);
+    let percent = (done / goal.hours) * 100;
+    if (percent > 100) {
+      percent = 100;
     }
 
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "entry-delete";
-    remove.setAttribute("aria-label", "Delete session: " + entry.subject);
-    remove.textContent = "×";
-    remove.addEventListener("click", () => deleteEntry(entry.id));
+    const fillClass = done >= goal.hours ? "bar-fill bar-done" : "bar-fill";
+    const text = done >= goal.hours ? "Done" : Math.round((goal.hours - done) * 100) / 100 + " h left";
 
-    li.append(hours, body, remove);
-    entriesList.appendChild(li);
-  });
-
-  const total = list.reduce((sum, e) => sum + e.hours, 0);
-  totalLine.textContent = entries.length
-    ? list.length + " session" + (list.length === 1 ? "" : "s") + " shown · " + formatHours(total) + " total"
-    : "";
+    html += '<div class="goal">' +
+      '<div class="goal-top"><h3>' + goal.subject + "</h3>" +
+      '<span class="goal-hours">' + done + " / " + goal.hours + " h</span></div>" +
+      '<div class="bar-outline"><div class="' + fillClass + '" style="width: ' + percent + '%"></div></div>' +
+      '<div class="goal-bottom"><span>' + text + "</span>" +
+      '<button class="btn btn-small btn-white" onclick="deleteGoal(' + goal.id + ')">Remove</button></div>' +
+      "</div>";
+  }
+  document.getElementById("goals-list").innerHTML = html;
 }
 
-function renderGoals() {
-  const week = entriesThisWeek();
-  goalList.innerHTML = "";
-  goalEmpty.hidden = goals.length > 0;
-
-  goals.forEach((goal) => {
-    const done = week
-      .filter((e) => e.subject.toLowerCase() === goal.subject.toLowerCase())
-      .reduce((sum, e) => sum + e.hours, 0);
-    const percent = Math.min((done / goal.hours) * 100, 100);
-    const complete = done >= goal.hours;
-
-    const li = document.createElement("li");
-    li.className = "goal";
-
-    const top = document.createElement("div");
-    top.className = "goal-top";
-
-    const title = document.createElement("h3");
-    title.textContent = goal.subject;
-
-    const figures = document.createElement("span");
-    figures.className = "goal-figures";
-    figures.textContent = formatHours(done) + " / " + formatHours(goal.hours);
-
-    top.append(title, figures);
-
-    const track = document.createElement("div");
-    track.className = "track";
-    track.setAttribute("role", "progressbar");
-    track.setAttribute("aria-valuenow", String(Math.round(percent)));
-    track.setAttribute("aria-valuemin", "0");
-    track.setAttribute("aria-valuemax", "100");
-    track.setAttribute("aria-label", goal.subject + " weekly progress");
-
-    const fill = document.createElement("div");
-    fill.className = "track-fill" + (complete ? " done" : "");
-    fill.style.width = percent + "%";
-    track.appendChild(fill);
-
-    const foot = document.createElement("div");
-    foot.className = "goal-foot";
-
-    const status = document.createElement("span");
-    status.textContent = complete
-      ? "Goal reached this week"
-      : formatHours(goal.hours - done) + " to go";
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "btn btn-danger btn-sm";
-    remove.textContent = "Remove";
-    remove.addEventListener("click", () => deleteGoal(goal.id));
-
-    foot.append(status, remove);
-    li.append(top, track, foot);
-    goalList.appendChild(li);
-  });
-}
-
-function renderAll() {
-  renderStats();
-  renderChart();
-  renderFilterOptions();
-  renderEntries();
-  renderGoals();
-}
-
-function addEntry(event) {
-  event.preventDefault();
-  hideError();
-
-  const subject = subjectInput.value.trim();
-  const date = dateInput.value;
-  const hours = parseFloat(hoursInput.value);
-
-  if (!subject) return showError("Give the session a subject.");
-  if (!date) return showError("Pick a date.");
-  if (!hours || hours <= 0) return showError("Hours must be a number above zero.");
-  if (hours > 24) return showError("That is more than a day. Try a smaller number.");
-  if (date > toISO(new Date())) return showError("You cannot log a session in the future.");
-
-  entries.push({
-    id: Date.now(),
-    subject,
-    date,
-    hours,
-    notes: notesInput.value.trim()
-  });
-
-  save(STORAGE_ENTRIES, entries);
-  form.reset();
-  dateInput.value = toISO(new Date());
-  subjectInput.focus();
-  renderAll();
+function showEverything() {
+  showStats();
+  showChart();
+  showFilterOptions();
+  showEntries();
+  showGoals();
 }
 
 function deleteEntry(id) {
-  entries = entries.filter((e) => e.id !== id);
-  save(STORAGE_ENTRIES, entries);
-  renderAll();
-}
-
-function addGoal(event) {
-  event.preventDefault();
-  const subject = goalSubject.value.trim();
-  const hours = parseFloat(goalHours.value);
-  if (!subject || !hours || hours <= 0) return;
-
-  const existing = goals.find((g) => g.subject.toLowerCase() === subject.toLowerCase());
-  if (existing) {
-    existing.hours = hours;
-  } else {
-    goals.push({ id: Date.now(), subject, hours });
-  }
-
-  save(STORAGE_GOALS, goals);
-  goalForm.reset();
-  renderGoals();
+  entries = entries.filter(function (e) {
+    return e.id !== id;
+  });
+  saveData();
+  showEverything();
 }
 
 function deleteGoal(id) {
-  goals = goals.filter((g) => g.id !== id);
-  save(STORAGE_GOALS, goals);
-  renderGoals();
+  goals = goals.filter(function (g) {
+    return g.id !== id;
+  });
+  saveData();
+  showGoals();
 }
 
-function loadSample() {
-  if (entries.length && !confirm("This replaces your current log with sample data. Continue?")) return;
+form.addEventListener("submit", function (event) {
+  event.preventDefault();
+  errorText.textContent = "";
 
-  const today = new Date();
-  const monday = startOfWeek(today);
-  const daysElapsed = Math.round((new Date(toISO(today)) - new Date(toISO(monday))) / 86400000);
-  const sample = [
-    { offset: 0, subject: "HTML & CSS", hours: 2, notes: "Semantic markup and the box model." },
-    { offset: 1, subject: "HTML & CSS", hours: 1.5, notes: "Rebuilt the card grid with CSS Grid." },
-    { offset: 1, subject: "Git", hours: 0.75, notes: "Branching, merging, fixing a bad commit message." },
-    { offset: 2, subject: "JavaScript", hours: 2.5, notes: "Array methods: map, filter, reduce." },
-    { offset: 3, subject: "JavaScript", hours: 1.25, notes: "DOM events and why addEventListener beats onclick." },
-    { offset: 4, subject: "Reading", hours: 1, notes: "Foundation HTML5 with CSS3, chapters 4 and 5." }
+  const subject = document.getElementById("subject").value.trim();
+  const date = document.getElementById("date").value;
+  const hours = parseFloat(document.getElementById("hours").value);
+
+  if (subject === "") {
+    errorText.textContent = "Please write a subject.";
+    return;
+  }
+  if (date === "") {
+    errorText.textContent = "Please pick a date.";
+    return;
+  }
+  if (!hours || hours <= 0) {
+    errorText.textContent = "Hours has to be a number bigger than 0.";
+    return;
+  }
+  if (date > getToday()) {
+    errorText.textContent = "You cannot add a session in the future.";
+    return;
+  }
+
+  entries.push({
+    id: Date.now(),
+    subject: subject,
+    date: date,
+    hours: hours,
+    notes: document.getElementById("notes").value.trim()
+  });
+
+  saveData();
+  form.reset();
+  document.getElementById("date").value = getToday();
+  showEverything();
+});
+
+goalForm.addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const subject = document.getElementById("goalSubject").value.trim();
+  const hours = parseFloat(document.getElementById("goalHours").value);
+
+  if (subject === "" || !hours || hours <= 0) {
+    return;
+  }
+
+  goals.push({
+    id: Date.now(),
+    subject: subject,
+    hours: hours
+  });
+
+  saveData();
+  goalForm.reset();
+  showGoals();
+});
+
+filter.addEventListener("change", showEntries);
+
+document.getElementById("clearBtn").addEventListener("click", function () {
+  if (confirm("Delete all saved sessions?")) {
+    entries = [];
+    saveData();
+    showEverything();
+  }
+});
+
+document.getElementById("exampleBtn").addEventListener("click", function () {
+  const examples = [
+    { subject: "HTML and CSS", hours: 2, notes: "Went through the box model and did the exercises." },
+    { subject: "HTML and CSS", hours: 1.5, notes: "Built the card layout with CSS Grid." },
+    { subject: "JavaScript", hours: 2, notes: "Arrays and loops." },
+    { subject: "JavaScript", hours: 1, notes: "addEventListener and forms." },
+    { subject: "Git", hours: 0.5, notes: "Commit, push, and fixing a mistake." },
+    { subject: "Reading", hours: 1, notes: "Read two chapters of the course book." }
   ];
 
-  entries = sample.map((s, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + (s.offset % (daysElapsed + 1)));
-    return { id: Date.now() + i, subject: s.subject, date: toISO(d), hours: s.hours, notes: s.notes };
-  });
+  const days = last7Days();
+  for (let i = 0; i < examples.length; i++) {
+    entries.push({
+      id: Date.now() + i,
+      subject: examples[i].subject,
+      date: days[i + 1],
+      hours: examples[i].hours,
+      notes: examples[i].notes
+    });
+  }
 
   goals = [
     { id: Date.now() + 100, subject: "JavaScript", hours: 5 },
-    { id: Date.now() + 101, subject: "HTML & CSS", hours: 4 }
+    { id: Date.now() + 101, subject: "HTML and CSS", hours: 4 }
   ];
 
-  save(STORAGE_ENTRIES, entries);
-  save(STORAGE_GOALS, goals);
-  renderAll();
-  document.getElementById("dashboard").scrollIntoView({ behavior: "smooth" });
-}
-
-function clearAll() {
-  if (!confirm("Delete every logged session? This cannot be undone.")) return;
-  entries = [];
-  save(STORAGE_ENTRIES, entries);
-  renderAll();
-}
-
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  themeToggle.textContent = theme === "dark" ? "Light" : "Dark";
-  save(STORAGE_THEME, theme);
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme");
-  applyTheme(current === "dark" ? "light" : "dark");
-}
-
-function toggleNav() {
-  const open = siteNav.classList.toggle("open");
-  navToggle.setAttribute("aria-expanded", String(open));
-  navToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-}
-
-function closeNav() {
-  siteNav.classList.remove("open");
-  navToggle.setAttribute("aria-expanded", "false");
-  navToggle.setAttribute("aria-label", "Open menu");
-}
-
-form.addEventListener("submit", addEntry);
-goalForm.addEventListener("submit", addGoal);
-demoBtn.addEventListener("click", loadSample);
-clearBtn.addEventListener("click", clearAll);
-filterSubject.addEventListener("change", renderEntries);
-sortBy.addEventListener("change", renderEntries);
-themeToggle.addEventListener("click", toggleTheme);
-navToggle.addEventListener("click", toggleNav);
-
-document.querySelectorAll(".nav-link").forEach((link) => link.addEventListener("click", closeNav));
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeNav();
+  saveData();
+  showEverything();
+  document.getElementById("stats").scrollIntoView();
 });
 
-window.addEventListener("resize", () => {
-  if (window.innerWidth > 900) closeNav();
+document.getElementById("menuBtn").addEventListener("click", function () {
+  document.getElementById("nav").classList.toggle("open");
 });
 
-applyTheme(load(STORAGE_THEME, "light"));
-dateInput.value = toISO(new Date());
-dateInput.max = toISO(new Date());
-renderAll();
+const navLinks = document.querySelectorAll("nav a");
+for (let i = 0; i < navLinks.length; i++) {
+  navLinks[i].addEventListener("click", function () {
+    document.getElementById("nav").classList.remove("open");
+  });
+}
+
+document.getElementById("date").value = getToday();
+loadData();
+showEverything();
