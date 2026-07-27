@@ -384,7 +384,9 @@ function deleteGoal(id) {
 function loadSample() {
   if (entries.length && !confirm("This replaces your current log with sample data. Continue?")) return;
 
-  const monday = startOfWeek(new Date());
+  const today = new Date();
+  const monday = startOfWeek(today);
+  const daysElapsed = Math.round((new Date(toISO(today)) - new Date(toISO(monday))) / 86400000);
   const sample = [
     { offset: 0, subject: "HTML & CSS", hours: 2, notes: "Semantic markup and the box model." },
     { offset: 1, subject: "HTML & CSS", hours: 1.5, notes: "Rebuilt the card grid with CSS Grid." },
@@ -394,14 +396,11 @@ function loadSample() {
     { offset: 4, subject: "Reading", hours: 1, notes: "Foundation HTML5 with CSS3, chapters 4 and 5." }
   ];
 
-  const today = toISO(new Date());
-  entries = sample
-    .map((s, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + s.offset);
-      return { id: Date.now() + i, subject: s.subject, date: toISO(d), hours: s.hours, notes: s.notes };
-    })
-    .filter((e) => e.date <= today);
+  entries = sample.map((s, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + (s.offset % (daysElapsed + 1)));
+    return { id: Date.now() + i, subject: s.subject, date: toISO(d), hours: s.hours, notes: s.notes };
+  });
 
   goals = [
     { id: Date.now() + 100, subject: "JavaScript", hours: 5 },
