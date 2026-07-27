@@ -86,6 +86,8 @@ a:hover { color: var(--brand-dark); }
 
 input, select, textarea, button { font: inherit; }
 
+[hidden] { display: none !important; }
+
 .wrap {
   width: min(100% - 2.5rem, var(--wrap));
   margin-inline: auto;
