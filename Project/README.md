@@ -1,63 +1,46 @@
-# StudyLog — course project
+# StudyLog
 
-A single-page learning tracker. Log a study session, tag it with a subject, set weekly
-hour goals, and the page works out your totals, your day streak and where the time went.
-Everything is stored in the browser with `localStorage`, so there is no account and no server.
+A small web page for writing down study sessions. You add the subject, the date and
+how many hours you did, and the page counts your totals for the last 7 days.
 
-This is my project submission for the front-end module. It is deliberately built with plain
-HTML, CSS and JavaScript so that every part of it is something I can explain.
+Live: https://fizzytri.github.io/software-development-skills-frontend/Project/
 
-## Run it
+## Running it
 
-```bash
-python -m http.server 8000
-```
+Open `index.html` in a browser, or use Live Server in VS Code.
 
-Then open <http://localhost:8000/Project/>. Opening `index.html` directly also works in most
-browsers, but a couple of them block `localStorage` on `file://` URLs, in which case the log
-will not persist between reloads.
+There is a button called "Add example data" in the log section which fills the page
+with a few sessions, so you can see what it looks like without typing everything in.
 
-Click **Load sample data** on the Log section to fill the dashboard with a week of example
-sessions without typing anything.
+## What it does
 
-## Features
+- Add a session with a subject, date, hours and notes
+- Delete a session, or delete all of them
+- Filter the list by subject
+- Totals for the last 7 days: hours, number of sessions, day streak and most studied subject
+- A bar chart of hours per day for the last 7 days
+- Weekly goals per subject with a progress bar
 
-- **Dashboard** — hours this week, sessions logged, current day streak, most studied subject
-- **Bar chart** — hours per day for the current Monday-to-Sunday week, drawn with CSS heights (no chart library)
-- **Session log** — add, delete, filter by subject, sort by newest / oldest / longest
-- **Weekly goals** — hour target per subject with a progress bar that turns green when reached
-- **Dark mode** — toggled by swapping one `data-theme` attribute; the palette is all custom properties
-- **Responsive** — three-column desktop layout collapses to one column, header becomes a slide-down menu
-- **Accessible** — skip link, visible focus rings, `aria-expanded` on the menu, `role="progressbar"` on goals, `prefers-reduced-motion` respected
-
-## Structure
+## Files
 
 ```
-Project/
-├── index.html      Markup: header, intro, dashboard, log, goals, about, footer
-├── css/style.css   Tokens, base, components, responsive
-├── js/app.js       State, storage, rendering, event handlers
-└── images/         Hand-written SVG (logo, favicon, illustration)
+index.html      all the HTML
+css/style.css   all the CSS
+js/app.js       all the JavaScript
+images/         one SVG drawing
 ```
 
-`js/app.js` follows one loop: state lives in the `entries` and `goals` arrays, every change
-writes to `localStorage` and then calls `renderAll()`, which redraws the stats, chart, list
-and goals from that state. Nothing reads values back out of the DOM.
+## How it works
 
-## Layout decisions
+Sessions are kept in an array called `entries`. When something changes, `saveData()`
+puts the array into localStorage and `showEverything()` redraws the page. The lists
+are built by making a string of HTML and putting it into the page with `innerHTML`.
 
-**CSS Grid** handles the page-level structure — the two-column intro, the four-across stat row,
-the form-beside-list split, the auto-filling goal cards and the footer columns.
+The layout uses CSS Grid for the big sections (hero, stats, log, goals, about, footer)
+and Flexbox for the smaller rows like the nav bar, the chart and each entry.
 
-**Flexbox** handles the one-dimensional pieces inside those areas — the header bar, the button
-rows, the chart columns, each entry card, the goal card header and footer.
+## Things I would still like to add
 
-Colours, spacing and radii are CSS custom properties in `:root`. Dark mode redefines the same
-names under `[data-theme="dark"]`, so no component rule needs a dark-specific override.
-
-## Things I would add next
-
-- Export the log as CSV
-- Monthly view alongside the weekly one
-- Editing an existing entry instead of deleting and re-adding
-- Syncing across devices, which needs a back-end and is a different module
+- Editing a session instead of deleting it and typing it again
+- A monthly view, not only the last 7 days
+- Saving the data somewhere so it works on more than one computer
